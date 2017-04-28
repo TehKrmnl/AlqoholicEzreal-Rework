@@ -20,7 +20,7 @@ R = {Delay = 1, Radius = 160, Range = 3000, Speed = 2000, Collision = false}
 end
 
 function Ezreal:LoadMenu()
-    self.Menu = MenuElement({type = MENU, id = "Ezreal", name = "The Prodigal EXplorer - Reworked By Poseidon", leftIcon="https://cdn.discordapp.com/emojis/249237025754972171.png"})
+    self.Menu = MenuElement({type = MENU, id = "Ezreal", name = "Ezreal - The Prodigal Explorer", leftIcon="http://pt.seaicons.com/wp-content/uploads/2015/07/Ezreal-Pulsefire-icon.png"})
 
     --[[Combo]]
     self.Menu:MenuElement({type = MENU, id = "Combo", name = "Combo Settings"})
@@ -40,14 +40,7 @@ function Ezreal:LoadMenu()
 
     --[[Misc]]
     --self.Menu:MenuElement({type = MENU, id = "Misc", name = "Misc Settings"})
-    self:MenuElement({name = " ", drop = {"Script Info"}})
-    self:MenuElement({name = "Script Version", drop = {"1.0"}})
-    self:MenuElement({name = "League Version", drop = {"7.8"}})
-    self:MenuElement({name = "Author", drop = {"Alcoholic's Ezreal (Reworked)"}})
-    self:MenuElement({type = MENU, name = "Auto Level Up",  id = "lvlup"})
-    self.lvlup:MenuElement({name = "Use Auto Level Up", id = "Use", value = true})
-    self.lvlup:MenuElement({name = "Don't Use At 1 Lvl", id = "flvl", value = true})
-    self.lvlup:MenuElement({name = "Sequence Order", id = "Order", drop = {"Recomended for Ezreal", "Q > E > Q", "W > Q > R","Q > E > Q","E > R > E","E > W > W", "R > W > W"}})
+
     --[[Draw]]
     self.Menu:MenuElement({type = MENU, id = "Draw", name = "Drawing Settings"})
     self.Menu.Draw:MenuElement({id = "DrawReady", name = "Draw Only Ready Spells [?]", value = true, tooltip = "Only draws spells when they're ready"})
@@ -55,7 +48,6 @@ function Ezreal:LoadMenu()
     self.Menu.Draw:MenuElement({id = "DrawW", name = "Draw W Range", value = true})
     self.Menu.Draw:MenuElement({id = "DrawE", name = "Draw E Range", value = true})
     self.Menu.Draw:MenuElement({id = "DrawTarget", name = "Draw Target [?]", value = true, tooltip = "Draws current target"})
-
 
 end
 
@@ -281,11 +273,7 @@ function Ezreal:CanCast(spellSlot)
     return self:IsReady(spellSlot) and self:CheckMana(spellSlot)
 end
 
-LocalCallbackAdd("Tick", function() Tick() end)         
-localCallbackAdd("Draw", function() Drawings() end)
-        AfterAttackCallback(function() AfterAttack() end) 
 
-        print("Ezreal The Prodigal EXplorer (Reworked) Loaded | Current orbwalker: "..CurrentOrbName())      
 
 
 function OnLoad()
