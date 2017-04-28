@@ -66,8 +66,8 @@ if GOS:GetMode() == "LastHit" then
     end
 end
 
-if function (Ezreal:Combo()
-local qtarget = self:GetTarget(Q.range)
+function Ezreal:Combo()
+if local qtarget = self:GetTarget(Q.range)
 
 if qtarget and self.Menu.Combo.ComboQ:Value() and self:CanCast(_Q)then
 if qtarget:GetCollision(Q.Radius, Q.Speed, Q.Delay) == 0 then
