@@ -40,13 +40,14 @@ function Ezreal:LoadMenu()
 
     --[[Misc]]
     --self.Menu:MenuElement({type = MENU, id = "Misc", name = "Misc Settings"})
-    self.Menu.:MenuElement({type = MENU, id = "Misc", name = "Misc Settings"})
-	self.Menu.:MenuElement({id = "MaxRange", name = "Max Range Limiter", value = 0.9, min = 0.5, max = 1, step = 0.01})
-    self.Menu.:MenuElement({type = SPACE, id = "ToolTip", name = "eg. X = 0.80 (Q.Range = (1150 * 0.80) = 920)"})
-    self.Menu:MenuElement({type = MENU, name = "Auto Level Up",  id = "lvlup"})
-    self.Menu.lvlup:MenuElement({name = "Use Auto Level Up", id = "Use", value = true})
-    self.Menu.lvlup:MenuElement({name = "Don't Use At 1 Lvl", id = "flvl", value = true})
-    self.Menu.lvlup:MenuElement({name = "Sequence Order", id = "Order", drop = {"Recomended for Ezreal", "Q > E > Q", "W > Q > R","Q > E > Q","E > R > E","E > W > W", "R > W > W"}})
+    self:MenuElement({name = " ", drop = {"Script Info"}})
+    self:MenuElement({name = "Script Version", drop = {"1.0"}})
+    self:MenuElement({name = "League Version", drop = {"7.8"}})
+    self:MenuElement({name = "Author", drop = {"Alcoholic's Ezreal (Reworked)"}})
+    self:MenuElement({type = MENU, name = "Auto Level Up",  id = "lvlup"})
+    self.lvlup:MenuElement({name = "Use Auto Level Up", id = "Use", value = true})
+    self.lvlup:MenuElement({name = "Don't Use At 1 Lvl", id = "flvl", value = true})
+    self.lvlup:MenuElement({name = "Sequence Order", id = "Order", drop = {"Recomended for Ezreal", "Q > E > Q", "W > Q > R","Q > E > Q","E > R > E","E > W > W", "R > W > W"}})
     --[[Draw]]
     self.Menu:MenuElement({type = MENU, id = "Draw", name = "Drawing Settings"})
     self.Menu.Draw:MenuElement({id = "DrawReady", name = "Draw Only Ready Spells [?]", value = true, tooltip = "Only draws spells when they're ready"})
@@ -55,9 +56,12 @@ function Ezreal:LoadMenu()
     self.Menu.Draw:MenuElement({id = "DrawE", name = "Draw E Range", value = true})
     self.Menu.Draw:MenuElement({id = "DrawTarget", name = "Draw Target [?]", value = true, tooltip = "Draws current target"})
 
+
 end
 
 function Ezreal:Tick()
+
+    -- Put everything you want to update every time the game ticks here (don't put too many calculations here or you'll drop FPS)
 
 if GOS:GetMode() == "Combo" then 
         self:Combo()
@@ -277,7 +281,11 @@ function Ezreal:CanCast(spellSlot)
     return self:IsReady(spellSlot) and self:CheckMana(spellSlot)
 end
 
+LocalCallbackAdd("Tick", function() Tick() end)         
+localCallbackAdd("Draw", function() Drawings() end)
+        AfterAttackCallback(function() AfterAttack() end) 
 
+        print("Alcoholic's Ezreal (Reworked) Loaded | Current orbwalker: "..CurrentOrbName())      
 
 
 function OnLoad()
