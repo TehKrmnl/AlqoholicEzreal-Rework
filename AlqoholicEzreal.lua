@@ -1,286 +1,580 @@
-class "Ezreal"
+if myHero.charName ~= "Ezreal" then return end 	
 
-require('DamageLib')
+local myHero = _G.myHero
 
-local _shadow = myHero.pos
+local LocalGetTickCount         = GetTickCount
+local LocalVector		= Vector
+local LocalCallbackAdd		= Callback.Add
+local LocalCallbackDel		= Callback.Del
+local LocalDrawLine		= Draw.Line
+local LocalDrawColor		= Draw.Color
+local LocalDrawCircle		= Draw.Circle
+local LocalCastSpell            = Control.CastSpell
+local LocalControlMove          = Control.Move
+local LocalControlIsKeyDown	= Control.IsKeyDown
+local LocalControlKeyUp  	= Control.KeyUp
+local LocalControlKeyDown	= Control.KeyDown
+local LocalGameCanUseSpell	= Game.CanUseSpell
+local LocalGameHeroCount 	= Game.HeroCount
+local LocalGameHero 		= Game.Hero
+local LocalGameMinionCount 	= Game.MinionCount
+local LocalGameMinion 		= Game.Minion
+local ITEM_1			= ITEM_1
+local ITEM_2			= ITEM_2
+local ITEM_3			= ITEM_3
+local ITEM_4			= ITEM_4
+local ITEM_5			= ITEM_5
+local ITEM_6			= ITEM_6
+local ITEM_7			= ITEM_7
+local _Q			= _Q
+local _W			= _W
+local _E			= _E
+local _R		        = _R
+local READY 		        = READY
+local LocalTableInsert          = table.insert
+local LocalTableSort            = table.sort
+local LocalTableRemove          = table.remove;
+local tonumber		        = tonumber
+local ipairs		        = ipairs
+local pairs		        = pairs
 
-function Ezreal:__init()
-    if myHero.charName ~= "Ezreal" then return end
-    self:LoadSpells()
-    self:LoadMenu()
-    Callback.Add("Tick", function() self:Tick() end)
-    Callback.Add("Draw", function() self:Draw() end)
-end
+local Menu, Q, W, E, R
 
-function Ezreal:LoadSpells()
-Q = {Delay = 0.25, Radius = 60, Range = 1150, Speed = 2000, Collision = true}
-W = {Delay = 0.25, Radius = 80, Range = 1000, Speed = 2000, Collision = false}
-E = {Delay = 0.25, Range = 475, Speed = math.max, width = 1}
-R = {Delay = 1, Radius = 160, Range = 3000, Speed = 2000, Collision = false}
-end
-
-function Ezreal:LoadMenu()
-    self.Menu = MenuElement({type = MENU, id = "Ezreal", name = "Ezreal - The Prodigal Explorer", leftIcon="http://pt.seaicons.com/wp-content/uploads/2015/07/Ezreal-Pulsefire-icon.png"})
-
-    --[[Combo]]
-    self.Menu:MenuElement({type = MENU, id = "Combo", name = "Combo Settings"})
-    self.Menu.Combo:MenuElement({id = "ComboQ", name = "Use Q", value = true})
-    self.Menu.Combo:MenuElement({id = "ComboW", name = "Use W", value = true})
-    self.Menu.Combo:MenuElement({id = "ComboE", name = "Use E offensively (AP EZ)", value = false})
-    --[[Harass]]
-    self.Menu:MenuElement({type = MENU, id = "Harass", name = "Harass Settings"})
-    self.Menu.Harass:MenuElement({id = "HarassQ", name = "Use Q", value = true})
-    self.Menu.Harass:MenuElement({id = "HarassW", name = "Use W", value = true})
-    self.Menu.Harass:MenuElement({id = "HarassMana", name = "Min. Mana", value = 40, min = 0, max = 100})
-
-    --[[Farm]]
-    self.Menu:MenuElement({type = MENU, id = "Farm", name = "Farm Settings"})
-    self.Menu.Farm:MenuElement({id = "FarmQ", name = "Use Q", value = true})
-    self.Menu.Farm:MenuElement({id = "FarmMana", name = "Min. Mana", value = 40, min = 0, max = 100})
-
-    --[[Misc]]
-    --self.Menu:MenuElement({type = MENU, id = "Misc", name = "Misc Settings"})
-    self.Menu.:MenuElement({type = MENU, id = "Misc", name = "Misc Settings"})
-	self.Menu.:MenuElement({id = "MaxRange", name = "Max Range Limiter", value = 0.9, min = 0.5, max = 1, step = 0.01})
-    self.Menu.:MenuElement({type = SPACE, id = "ToolTip", name = "eg. X = 0.80 (Q.Range = (1150 * 0.80) = 920)"})
-    self.Menu:MenuElement({type = MENU, name = "Auto Level Up",  id = "lvlup"})
-    self.Menu.lvlup:MenuElement({name = "Use Auto Level Up", id = "Use", value = true})
-    self.Menu.lvlup:MenuElement({name = "Don't Use At 1 Lvl", id = "flvl", value = true})
-    self.Menu.lvlup:MenuElement({name = "Sequence Order", id = "Order", drop = {"Recomended for Ezreal", "Q > E > Q", "W > Q > R","Q > E > Q","E > R > E","E > W > W", "R > W > W"}})
-    
-    --[[Draw]]
-    self.Menu:MenuElement({type = MENU, id = "Draw", name = "Drawing Settings"})
-    self.Menu.Draw:MenuElement({id = "DrawReady", name = "Draw Only Ready Spells [?]", value = true, tooltip = "Only draws spells when they're ready"})
-    self.Menu.Draw:MenuElement({id = "DrawQ", name = "Draw Q Range", value = true})
-    self.Menu.Draw:MenuElement({id = "DrawW", name = "Draw W Range", value = true})
-    self.Menu.Draw:MenuElement({id = "DrawE", name = "Draw E Range", value = true})
-    self.Menu.Draw:MenuElement({id = "DrawTarget", name = "Draw Target [?]", value = true, tooltip = "Draws current target"})
-
-end
-
-function Ezreal:Tick()
-
-if GOS:GetMode() == "Combo" then 
-        self:Combo()
-if GOS:GetMode() == "Harass" then 
-        self:Harass()
-if GOS:GetMode() == "Farm" then 
-        self:Farm()
-if GOS:GetMode() == "LastHit" then 
-        self:LastHit()
-    end
-end
-
-function Ezreal:Combo()
-local qtarget = self:GetTarget(Q.range)
-
-if qtarget and self.Menu.Combo.ComboQ:Value() and self:CanCast(_Q)then
-if qtarget:GetCollision(Q.Radius, Q.Speed, Q.Delay) == 0 then
-local castPos = qtarget:GetPrediction(Q.Speed, Q.Delay)
-self:CastQ(castPos)
-end
-end
-
-local wtarget = self:GetTarget(W.range)
-
-if wtarget and self.Menu.Combo.ComboW:Value() and self:CanCast(_W)then
-if wtarget:GetCollision(W.Radius, W.Speed, W.Delay) == 0 then
-local castPos = wtarget:GetPrediction(W.Speed, W.Delay)
-self:CastW(castPos)
-end
-end
-
-local etarget = self:GetTarget(E.range)
-if etarget and self.Menu.Combo.ComboE:Value() and self:CanCast(_E)then
-local castPos = etarget
-self:CastE(castPos)
-end
-
-end
-
-
-
-function Ezreal:Harass()
-	if(myHero.mana/myHero.maxMana >= self.Menu.Harass.HarassMana:Value()/100) then
-	local qtarget = self:GetTarget(Q.range)
-if qtarget and self.Menu.Harass.HarassQ:Value() and self:CanCast(_Q)then
-if qtarget:GetCollision(Q.Radius, Q.Speed, Q.Delay) == 0 then
-local castPos = qtarget:GetPrediction(Q.Speed, Q.Delay)
-self:CastQ(castPos)
-end
-end
-
-local wtarget = self:GetTarget(W.range)
-if wtarget and self.Menu.Harass.HarassW:Value() and self:CanCast(_W)then
-if wtarget:GetCollision(W.Radius, W.Speed, W.Delay) == 0 then
-local castPos = wtarget:GetPrediction(W.Speed, W.Delay)
-self:CastW(castPos)
-end
-end
-end
-end
-
-function Ezreal:Farm()
-if (myHero.mana/myHero.maxMana >= self.Menu.Farm.FarmMana:Value()/100) then
-local qMinion
-		if self:CanCast(_Q) then
-			for j = 1,Game.MinionCount() do
-        local minion = Game.Minion(j)
-        if minion.isTargetable and not minion.dead and minion.distance <= Q.Range and minion.team ~= myHero.team then
-            qMinion = minion
-            break
+local Mode = function()
+        if _G.SDK then
+        	if _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] then
+                        return "Combo"
+                elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_HARASS] then
+                        return "Harass"
+                elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_LANECLEARS] then
+                        return "LaneClear"
+                elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_JUNGLECLEAR] then
+                        return "LaneClear"
+                elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_LASTHIT] then
+                        return "LastHit"
+                elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_FLEE] then
+                        return "Flee"
+                end
+        elseif _G.Orbwalker then
+        	if GOS:GetMode() == "Clear" then
+        		return "LaneClear"
+        	else
+        	        return GOS:GetMode()
+        	end
         end
-    end
-			if qMinion then
-				local qMinPos = qMinion:GetPrediction(Q.Speed, Q.Delay)
-					    Control.SetCursorPos(qMinPos)
-				Control.CastSpell(HK_Q, qMinPos)
+        return ""
+end
+
+local LastMove = 0
+local Move = function(pos)
+	if LastMove + 250 <= LocalGetTickCount() then
+		LocalControlMove(pos)
+	        LastMove = LocalGetTickCount()
+        end
+end
+
+local GetTarget = function(range)
+        local orb
+        if _G.SDK then
+        	orb = _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_PHYSICAL, myHero.pos)
+        elseif _G.Orbwalker then
+        	orb = GOS:GetTarget(range, "AD")
+        end
+        return orb
+end
+
+local ValidTarget =  function(unit, range)
+	local range = type(range) == "number" and range or math.huge
+	return unit and unit.team ~= myHero.team and unit.valid and unit.distance <= range and not unit.dead and unit.isTargetable and unit.visible
+end
+
+local GetEnemyHeroes = function()
+        local result = {}
+	for i = 1, LocalGameHeroCount() do
+		local Hero = LocalGameHero(i)
+		if Hero.isEnemy then
+			LocalTableInsert(result, Hero)
+		end
+	end
+	return result
+end
+
+local GetMinions = function(range)
+        local result = {}
+	for i = 1, LocalGameMinionCount() do
+		local minion = LocalGameMinion(i)
+		if minion and ValidTarget(minion, range) and minion.isEnemy and minion.team ~= 300 then
+			LocalTableInsert(result, minion)
+		end
+	end
+	return result
+end
+
+local GetJungleMinions = function(range)
+        local result = {}
+	for i = 1, LocalGameMinionCount() do
+		local minion = LocalGameMinion(i)
+		if minion and ValidTarget(minion, range) and minion.team == 300 then
+			LocalTableInsert (result, minion)
+		end
+	end
+	return result
+end
+
+local GetDistanceSqr = function(Pos1, Pos2)
+	local Pos2 = Pos2 or myHero.pos
+	local dx = Pos1.x - Pos2.x
+	local dz = (Pos1.z or Pos1.y) - (Pos2.z or Pos2.y)
+	return dx^2 + dz^2
+end
+
+local GetDistance = function(Pos1, Pos2)
+	return math.sqrt(GetDistanceSqr(Pos1, Pos2))
+end
+
+local GetPercentHP = function(unit)
+        return 100 * unit.health / unit.maxHealth
+end
+
+local GetPercentMP = function(unit)
+        return 100 * unit.mana / unit.maxMana
+end
+
+local HealthPrediction = function(unit, time)
+        local orb
+        if _G.SDK then
+        	orb = _G.SDK.HealthPrediction:GetPrediction(unit, time)
+        elseif _G.Orbwalker then
+        	orb = GOS:HP_Pred(unit, time)
+        end
+        return orb
+end
+
+local VectorPointProjectionOnLineSegment = function(v1, v2, v)
+	local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
+        local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) ^ 2 + (by - ay) ^ 2)
+        local pointLine = { x = ax + rL * (bx - ax), y = ay + rL * (by - ay) }
+        local rS = rL < 0 and 0 or (rL > 1 and 1 or rL)
+        local isOnSegment = rS == rL
+        local pointSegment = isOnSegment and pointLine or {x = ax + rS * (bx - ax), y = ay + rS * (by - ay)}
+	return pointSegment, pointLine, isOnSegment
+end
+
+local EnemyMinionsOnLine = function(sp, ep, width)
+        local c = 0
+        for i, minion in pairs(GetMinions()) do
+        	if minion and not minion.dead and minion.isEnemy then
+        		local pointSegment, pointLine, isOnSegment = VectorPointProjectionOnLineSegment(sp, ep, minion.pos)
+        		if isOnSegment and GetDistanceSqr(pointSegment, minion.pos) < (width + minion.boundingRadius)^2 and GetDistanceSqr(sp, ep) > GetDistanceSqr(sp, minion.pos) then
+				c = c + 1
+			end
+        	end
+        end
+        return c
+end
+
+local GetBestLinearFarmPos = function(range, width)
+	local pos, hit = nil, 0
+	for i, minion in pairs(GetMinions()) do
+		if minion and not minion.dead and minion.isEnemy then
+			local EP = myHero.pos:Extended(minion.pos, range)
+			local C = EnemyMinionsOnLine(myHero.pos, EP, width)
+			if C > hit then
+				hit = C
+				pos = minion.pos
 			end
 		end
 	end
+	return pos, hit
 end
 
-function Ezreal:LastHit()
-    -- LASTHIT LOGIC HERE
+local CircleCircleIntersection = function(c1, c2, r1, r2) 
+        local D = GetDistance(c1, c2)
+        if D > r1 + r2 or D <= math.abs(r1 - r2) then return nil end 
+        local A = (r1 * r2 - r2 * r1 + D * D) / (2 * D) 
+        local H = math.sqrt(r1 * r1 - A * A)
+        local Direction = (c2 - c1):Normalized() 
+        local PA = c1 + A * Direction 
+        local S1 = PA + H * Direction:Perpendicular() 
+        local S2 = PA - H * Direction:Perpendicular() 
+        return S1, S2 
 end
 
-function Ezreal:CastQ(position)
-    if position then
-	    Control.SetCursorPos(position)
-        Control.CastSpell(HK_Q, position)
-    end
+local ClosestToMouse = function(p1, p2) 
+        if GetDistance(mousePos, p1) > GetDistance(mousePos, p2) then return p2 else return p1 end
 end
 
-function Ezreal:CastW(position)
-    if position then
-		    Control.SetCursorPos(position)
-
-        Control.CastSpell(HK_W, position)
-    end
+local DrawLine3D = function(x1, y1, z1, x2, y2, z2, width, color)
+	local xyz_1 = LocalVector(x1, y1, z1):To2D()
+	local xyz_2 = LocalVector(x2, y2, z2):To2D()
+	LocalDrawLine(xyz_2.x, xyz_2.y, xyz_1.x, xyz_1.y, width or 1, color or LocalDrawColor(255, 255, 255, 255))
 end
 
-function Ezreal:CastE(position)
-    if position then
-		    Control.SetCursorPos(position)
+local DrawRectangleOutline = function(startPos, endPos, width, color, ex)     
+        local c1 = startPos+Vector(Vector(endPos)-startPos):Perpendicular():Normalized()*width     
+        local c2 = startPos+Vector(Vector(endPos)-startPos):Perpendicular2():Normalized()*width     
+        local c3 = endPos+Vector(Vector(startPos)-endPos):Perpendicular():Normalized()*width     
+        local c4 = endPos+Vector(Vector(startPos)-endPos):Perpendicular2():Normalized()*width     
+        DrawLine3D(c1.x,c1.y,c1.z,c2.x,c2.y,c2.z,math.ceil(width/ex),color)     
+        DrawLine3D(c2.x,c2.y,c2.z,c3.x,c3.y,c3.z,math.ceil(width/ex),color)     
+        DrawLine3D(c3.x,c3.y,c3.z,c4.x,c4.y,c4.z,math.ceil(width/ex),color)     
+        DrawLine3D(c1.x,c1.y,c1.z,c4.x,c4.y,c4.z,math.ceil(width/ex),color) 
+end 
 
-        Control.CastSpell(HK_E, position)
-    end
+local DrawTriangle = function(vector3, color, thickness, size, rot, speed, yShift, yLevel) 	
+        if not vector3 then vector3 = LocalVector(myHero.pos) end 	
+        if not color then color = LocalDrawColor(255, 255, 255, 255) end 	
+        if not thickness then thickness = 3 end 	
+        if not size then size = 75 end 	
+        if not speed then speed = 1 else speed = 1-speed end
+        vector3.y = vector3.y + yShift + (rot * yLevel) 
+        local a2v = function(a, m) m = m or 1 return math.cos(a) * m, math.sin(a) * m end
+        local RX1, RZ1 = a2v((rot*speed), size) 	
+        local RX2, RZ2 = a2v((rot*speed) + math.pi*0.33333, size) 	
+        local RX3, RZ3 = a2v((rot*speed) + math.pi*0.66666, size) 	
+        local PX1 = vector3.x + RX1 	
+        local PZ1 = vector3.z + RZ1 	
+        local PX2 = vector3.x + RX2 	
+        local PZ2 = vector3.z + RZ2 	
+        local PX3 = vector3.x + RX3 	
+        local PZ3 = vector3.z + RZ3 	
+        local PXT1 = vector3.x - (PX1 - vector3.x) 	
+        local PZT1 = vector3.z - (PZ1 - vector3.z) 	
+        local PXT3 = vector3.x - (PX3 - vector3.x) 	
+        local PZT3 = vector3.z - (PZ3 - vector3.z)  	
+        DrawLine3D(PXT1, vector3.y, PZT1, PXT3, vector3.y, PZT3, thickness, color) 	
+        DrawLine3D(PXT3, vector3.y, PZT3, PX2, vector3.y, PZ2, thickness, color) 	
+        DrawLine3D(PX2, vector3.y, PZ2, PXT1, vector3.y, PZT1, thickness, color) 
 end
 
-function Ezreal:CastR(target)
-    if target then
-		    Control.SetCursorPos(position)
-
-        Control.CastSpell(HK_R, target)
-    end
+local GetItemSlot = function(unit, id)
+        for i = ITEM_1, ITEM_7 do
+		if unit:GetItemData(i).itemID == id and unit:GetSpellData(i).currentCd == 0 then 
+			return i
+		end
+	end
+	return nil
 end
 
-function Ezreal:Draw()
-    if myHero.dead then return end
+local CastQ = function(target) 
+        LocalCastSpell(HK_Q, target) 
+end 
 
-    if self.Menu.Draw.DrawReady:Value() then
-        if self:IsReady(_Q) and self.Menu.Draw.DrawQ:Value() then
-            Draw.Circle(myHero.pos, Q.Range, 1, Draw.Color(255, 255, 255, 255))
+local CastQ2 = function(target) 
+        local pred = target:GetPrediction(Q.speed, Q.delay)
+        if pred == nil then return end 
+        local targetPos = LocalVector(myHero.pos):Extended(pred, Q2.range) 
+        if Q.IsReady() and ValidTarget(target, Q2.range) and GetDistance(myHero.pos, pred) <= Q2.range then 
+        	for i, minion in pairs(GetMinions()) do 
+        		if minion and not minion.dead and ValidTarget(minion, Q.range) then 
+        			local minionPos = LocalVector(myHero.pos):Extended(LocalVector(minion.pos), Q2.range)
+        			if GetDistance(targetPos, minionPos) <= Q2.width/2 then 
+        				LocalCastSpell(HK_Q, minion) 
+        			end 
+        		end 
+        	end 
+        end 
+end
+
+local CastW = function(target, fast) 
+        if not fast then 
+        	local pred = target:GetPrediction(W.speed, W.delay)
+        	local col = target:GetCollision(W.width, W.speed, W.delay)
+        	if col < 1 then
+        		LocalCastSpell(HK_W, pred) 
+        	end
+        else 
+        	LocalCastSpell(HK_W, target.pos)
+        end 
+end
+
+local CastE = function(target, mode, range) 
+        if mode == 1 then 
+        	local c1, c2, r1, r2 = LocalVector(myHero.pos), LocalVector(target.pos), myHero.range, 525 
+        	local O1, O2 = CircleCircleIntersection(c1, c2, r1, r2) 
+        	if O1 or O2 then 
+        		local pos = c1:Extended(LocalVector(ClosestToMouse(O1, O2)), range)
+        		LocalCastSpell(HK_E, pos) 
+        	end 
+        elseif mode == 2 then 
+        	local pos = Vector(myHero.pos):Extended(mousePos, range)
+        	LocalCastSpell(HK_E, pos) 
+        elseif mode == 3 then 
+        	local pos = LocalVector(myHero.pos):Extended(LocalVector(target.pos), range)
+        	LocalCastSpell(HK_E, pos)
+        end 
+end 
+
+local KB = { [ITEM_1] = HK_ITEM_1, [ITEM_2] = HK_ITEM_2, [ITEM_3] = HK_ITEM_3, [ITEM_4] = HK_ITEM_4, [ITEM_5] = HK_ITEM_5, [ITEM_6] = HK_ITEM_6 }
+local BWC = GetItemSlot(myHero, 3144)
+local BOTRK = GetItemSlot(myHero, 3153)
+local
+local UseItems = function(target)
+        BWC   = GetItemSlot(myHero, 3144)
+        BOTRK = GetItemSlot(myHero, 3153)
+        if Menu.Items.BOTRK.Use:Value() and BOTRK and ValidTarget(target, 550) and GetPercentHP(myHero) <= Menu.Items.BOTRK.MyHP:Value() and GetPercentHP(target) <= Menu.Items.BOTRK.EnemyHP:Value() then
+        	LocalCastSpell(KB[BOTRK], target)
+        elseif Menu.Items.BWC.Use:Value() and BWC and ValidTarget(target, 550) then
+        	LocalCastSpell(KB[BWC], target)
+    
+end
+
+local LvLOrder = {
+        [1] = { HK_Q, HK_E, HK_W, HK_Q, HK_Q, HK_R, HK_Q, HK_W, HK_Q, HK_W, HK_R, HK_W, HK_W, HK_E, HK_E, HK_R, HK_E, HK_E },
+        [2] = { HK_Q, HK_W, HK_E, HK_Q, HK_Q, HK_R, HK_Q, HK_W, HK_Q, HK_W, HK_R, HK_W, HK_W, HK_E, HK_E, HK_R, HK_E, HK_E },
+}
+local LvLSlot = nil
+local LvLTick = 0
+local AutoLvLUp = function()
+        local MyLvLPts = myHero.levelData.lvlPts
+        local MyLvL = myHero.levelData.lvl
+        local Sec = LvLOrder[Menu.lvlup.Order:Value()][MyLvL - MyLvLPts + 1]
+
+        if MyLvLPts > 0 then
+        	if Menu.lvlup.flvl:Value() and MyLvL == 1 then return end
+        	if LocalGetTickCount() - LvLTick > 800 and Sec ~= nil then
+        		LocalControlKeyDown(HK_LUS)
+        		LocalControlKeyDown(Sec)
+        		LvLSlot = Sec
+        		LvLTick = LocalGetTickCount()
+        	end
         end
-        if self:IsReady(_W) and self.Menu.Draw.DrawW:Value() then
-            Draw.Circle(myHero.pos, W.Range, 1, Draw.Color(255, 255, 255, 255))
+        if LocalControlIsKeyDown(HK_LUS) then
+                LocalControlKeyUp(HK_LUS)
         end
-        if self:IsReady(_E) and self.Menu.Draw.DrawE:Value() then
-            Draw.Circle(myHero.pos, E.Range, 1, Draw.Color(255, 255, 255, 255))
+        if LvLSlot and LocalControlIsKeyDown(LvLSlot) then
+                LocalControlKeyUp(LvLSlot)
         end
+end
 
-    else
-        if self.Menu.Draw.DrawQ:Value() then
-            Draw.Circle(myHero.pos, Q.Range, 1, Draw.Color(255, 255, 255, 255))
+local Tick = function()
+        if Menu.lvlup.Use:Value() then
+        	AutoLvLUp()
         end
-        if self.Menu.Draw.DrawW:Value() then
-            Draw.Circle(myHero.pos, W.Range, 1, Draw.Color(255, 255, 255, 255))
+        if Mode() == "LastHit" and GetPercentMP(myHero) >= Menu.LastHit.Mana:Value() and Menu.LastHit.Q.Use:Value() and Q.IsReady() then
+        	for i, minion in pairs(GetMinions()) do
+        	        if minion and not minion.dead and GetDistance(myHero.pos, minion.pos) <= Q.range then
+        		        local hppred = HealthPrediction(minion, Q2.delay)
+        		        if Q.GetDamage(unit) >= hppred then
+        			        LocalCastSpell(HK_Q, minion)
+        		        end
+        	        end
+                end
+        elseif Mode() == "LaneClear" and GetPercentMP(myHero) >= Menu.LaneClear.Mana:Value() and Menu.LaneClear.Q.Use:Value() and Q.IsReady() then
+        	local pos, hit = GetBestLinearFarmPos(Q.range, Q2.width)
+        	if pos and hit >= Menu.LaneClear.Q.MinionHit:Value() then
+        		LocalCastSpell(HK_Q, pos)
+        	end
         end
-        if self.Menu.Draw.DrawE:Value() then
-            Draw.Circle(myHero.pos, E.Range, 1, Draw.Color(255, 255, 255, 255))
+        local target = GetTarget(1500)
+        if target == nil then return end
+        if Mode() == "Combo" then  
+                UseItems(target)    	
+        	if Menu.Combo.Q.Use2:Value() then 
+        		CastQ2(target) 
+        	end 
+        elseif Mode() == "Harass" and GetPercentMP(myHero) >= Menu.Harass.Mana:Value() and Menu.Harass.WhiteList[target.charName]:Value() then
+        	if Menu.Harass.Q.Use:Value() and Q.IsReady() and ValidTarget(target, Q.range) then
+        		CastQ(target)
+        	end
+        	if Menu.Harass.Q.Use2:Value() then 
+        		CastQ2(target) 
+        	end 
+        	if Menu.Harass.W.Use:Value() and W.IsReady() and ValidTarget(target, W.range) then 
+        		CastW(target, false) 
+        	end 
         end
-
-    end
-
-
-    if self.Menu.Draw.DrawTarget:Value() then
-        local drawTarget = self:GetTarget(Q.Range)
-        if drawTarget then
-            Draw.Circle(drawTarget.pos,80,3,Draw.Color(255, 255, 0, 0))
+        if Menu.AutoHarass.UseExtQ:Value() and GetPercentMP(myHero) >= Menu.AutoHarass.Mana:Value() and Menu.AutoHarass.WhiteList[target.charName]:Value() then
+        	CastQ2(target)
         end
-    end
 end
 
-function Ezreal:Mode()
-    if Orbwalker["Combo"].__active then
-        return "Combo"
-    elseif Orbwalker["Harass"].__active then
-        return "Harass"
-    elseif Orbwalker["Farm"].__active then
-        return "Farm"
-    elseif Orbwalker["LastHit"].__active then
-        return "LastHit"
-    end
-    return ""
-end
 
-function Ezreal:GetTarget(range)
-    local target
-    for i = 1,Game.HeroCount() do
-        local hero = Game.Hero(i)
-        if hero.isTargetable and not hero.dead and hero.team ~= myHero.team then
-            target = hero
-            break
+    
+        if Menu.Draw.Q.Range:Value() and Q.IsReady() then
+                LocalDrawCircle(myHero.pos, Q.range, Menu.Draw.Q.Width:Value(), Menu.Draw.Q.Color:Value())
         end
-    end
-    return target
-end
-
-
-
-function Ezreal:GetPercentHP(unit)
-    return 100 * unit.health / unit.maxHealth
-end
-
-function Ezreal:GetPercentMP(unit)
-    return 100 * unit.mana / unit.maxMana
-end
-
-function Ezreal:HasBuff(unit, buffname)
-    for K, Buff in pairs(self:GetBuffs(unit)) do
-        if Buff.name:lower() == buffname:lower() then
-            return true
+        if Menu.Draw.W.Range:Value() and W.IsReady() then
+                LocalDrawCircle(myHero.pos, W.range, Menu.Draw.W.Width:Value(), Menu.Draw.W.Color:Value())
         end
-    end
-    return false
-end
-
-function Ezreal:GetBuffs(unit)
-    self.T = {}
-    for i = 0, unit.buffCount do
-        local Buff = unit:GetBuff(i)
-        if Buff.count > 0 then
-            table.insert(self.T, Buff)
+        if Menu.Draw.E.Range:Value() and E.IsReady() then
+                LocalDrawCircle(myHero.pos, E.range, Menu.Draw.E.Width:Value(), Menu.Draw.E.Color:Value())
         end
-    end
-    return self.T
+        if Menu.Draw.R.Range:Value() and R.IsReady() then
+                LocalDrawCircle(myHero.pos, R.range, Menu.Draw.R.Width:Value(), Menu.Draw.R.Color:Value())
+        end
+	local target = GetTarget(1500)
+	if target == nil then return end
+	if Menu.Draw.CurTarget:Value() then
+	LocalDrawCircle(target.pos, LocalDrawColor(100, 255, 255, 0)) 	
+        DrawTriangle(target.pos, LocalDrawColor(100, 255, 255, 0), 2, 75, inc, 10, 0, 0)  
+        DrawTriangle(target.pos, LocalDrawColor(100, 255, 255, 0), 2, 100, inc, 10, 0, 0) 
+        end
+        if Menu.Draw.Q.Range2:Value() and Q.IsReady() and GetDistance(myHero.pos, target.pos) <= 1500 then  		
+        	DrawRectangleOutline(myHero.pos, myHero.pos:Extended(target.pos, Q.range), Q2.width, Menu.Draw.Q.Color2:Value(), 50) 		
+        	DrawRectangleOutline(myHero.pos, myHero.pos:Extended(target.pos, Q2.range), Q2.width, Menu.Draw.Q.Color2:Value(), 50) 	
+        end 
 end
 
-function Ezreal:IsReady(spellSlot)
-    return myHero:GetSpellData(spellSlot).currentCd == 0 and myHero:GetSpellData(spellSlot).level > 0
+local AfterAttack = function()
+        local target = GetTarget(1500)
+        local ComboRotation = Menu.Combo.ComboRotation:Value() - 1
+        local JungleRotation = Menu.JungleClear.JungleClearRotation:Value() - 1
+
+	if Mode() == "Combo" then
+		if ComboRotation == 3 then
+	        	if Menu.Combo.W.Use:Value() and W.IsReady() and ValidTarget(target, W.range) then
+		                CastW(target, Menu.Combo.W.UseFast:Value())
+	                elseif Menu.Combo.E.Use:Value() and E.IsReady() and ValidTarget(target, E.range*2) then
+		                CastE(target, Menu.Combo.E.Mode:Value(), Menu.Combo.E.Range:Value())
+	                elseif Menu.Combo.Q.Use:Value() and Q.IsReady() and ValidTarget(target, Q.range) then
+		                CastQ(target)
+	                end
+	        end
+		if Menu.Combo.Q.Use:Value() and (ComboRotation == 0 or LocalGameCanUseSpell(ComboRotation) ~= READY) and Q.IsReady() and ValidTarget(target, Q.range) then
+		        CastQ(target)
+	        elseif Menu.Combo.E.Use:Value() and (ComboRotation == 2 or LocalGameCanUseSpell(ComboRotation) ~= READY) and E.IsReady() and ValidTarget(target, E.range*2) then
+		        CastE(target, Menu.Combo.E.Mode:Value(), Menu.Combo.E.Range:Value())
+	        elseif Menu.Combo.W.Use:Value() and (ComboRotation == 1 or LocalGameCanUseSpell(ComboRotation) ~= READY) and W.IsReady() and ValidTarget(target, W.range) then
+		        CastW(target, Menu.Combo.W.UseFast:Value())
+	        end
+        elseif Mode() == "LaneClear" and GetPercentMP(myHero) >= Menu.JungleClear.Mana:Value() then
+        	for i, jminion in pairs(GetJungleMinions()) do
+        		if Menu.JungleClear.Q.Use:Value() and (JungleRotation == 0 or LocalGameCanUseSpell(JungleRotation) ~= READY) and Q.IsReady() and ValidTarget(jminion, Q.range) then
+		                CastQ(jminion)
+	            
+	                end
+        	end
+        end
 end
 
-function Ezreal:CheckMana(spellSlot)
-    return myHero:GetSpellData(spellSlot).mana < myHero.mana
+local AfterAttackCallback = function(func)
+        if _G.SDK then
+        	_G.SDK.Orbwalker:OnPostAttack(func) 
+        elseif _G.Orbwalker then
+        	_G.GOS:OnAttackComplete(func)
+        end
 end
 
-function Ezreal:CanCast(spellSlot)
-    return self:IsReady(spellSlot) and self:CheckMana(spellSlot)
+local CurrentOrbName = function()
+        local orb
+        if _G.SDK then
+        	orb = "IC's Orbwalker"
+        elseif _G.Orbwalker then
+        	orb = "Noddy's Orbwalker, I recommend using IC's Orbwalker"
+        end
+        return orb
 end
 
+local Load = function()   
+        require("MapPositionGOS")
+
+        Menu = MenuElement({type = MENU, name = "Alcoholic | Ezreal Reworked",  id = "Ezreal", leftIcon = "https://cdn.discordapp.com/emojis/249237025754972171.png"})
+        Menu:MenuElement({name = " ", drop = {"General Features"}})
+        Menu:MenuElement({type = MENU, name = "Combo",  id = "Combo"})
+        Menu.Combo:MenuElement({type = MENU, name = "[Q] Mystic Shot",  id = "Q"})
+        Menu.Combo.Q:MenuElement({name = "Use Q In Combo", id = "Use", value = true})
+        Menu.Combo:MenuElement({type = MENU, name = "[W] Essence Flux",  id = "W"})
+        Menu.Combo.W:MenuElement({name = "Use W In Combo", id = "Use", value = true})
+        Menu.Combo:MenuElement({type = MENU, name = "[E] Arcane Shift",  id = "E"})
+        
+
+        Menu:MenuElement({type = MENU, name = "Harass",  id = "Harass"})
+        Menu.Harass:MenuElement({type = MENU, name = "[Q] Mystic Shot",  id = "Q"})
+        Menu.Harass.Q:MenuElement({name = "Harass With Q", id = "Use", value = true})
+        Menu.Harass.Q:MenuElement({name = "Harass With Extended Q", id = "Use2", value = true})
+        Menu.Harass:MenuElement({type = MENU, name = "[W] Essence Flux",  id = "W"})
+        Menu.Harass.W:MenuElement({name = "Harass With W", id = "Use", value = true})
+        Menu.Harass:MenuElement({type = MENU, name = "White List",  id = "WhiteList"})
+        for i, Enemy in pairs(GetEnemyHeroes()) do
+        	Menu.Harass.WhiteList:MenuElement({name = Enemy.charName,  id = Enemy.charName, value = true})
+        end
+        Menu.Harass:MenuElement({name = "Mana Manager(%)", id = "Mana", value = 50, min = 1, max = 100, step = 1})
+
+        Menu:MenuElement({type = MENU, name = "Last Hit",  id = "LastHit"})
+        Menu.LastHit:MenuElement({type = MENU, name = "[Q] Mystic Shot",  id = "Q"})
+        Menu.LastHit.Q:MenuElement({name = "Last Hit With Q", id = "Use", value = true})
+        Menu.LastHit:MenuElement({name = "Mana Manager(%)", id = "Mana", value = 50, min = 1, max = 100, step = 1})
+
+        Menu:MenuElement({type = MENU, name = "Lane Clear",  id = "LaneClear"})
+        Menu.LaneClear:MenuElement({type = MENU, name = "[Q] Mystic Shot",  id = "Q"})
+        Menu.LaneClear.Q:MenuElement({name = "Lane Clear With Q", id = "Use", value = true})
+        Menu.LaneClear.Q:MenuElement({name = "Minion Hit", id = "MinionHit", value = 3, min = 1, max = 6, step = 1})
+        Menu.LaneClear:MenuElement({name = "Mana Manager(%)", id = "Mana", value = 50, min = 1, max = 100, step = 1})
+
+        Menu:MenuElement({type = MENU, name = "Jungle Clear",  id = "JungleClear"})
+        Menu.JungleClear:MenuElement({type = MENU, name = "[Q] Mystic Shot",  id = "Q"})
+        Menu.JungleClear.Q:MenuElement({name = "Use Q In JungleClear", id = "Use", value = true})
+
+        Menu:MenuElement({name = " ", drop = {"Advanced Features"}})
+
+        Menu:MenuElement({type = MENU, name = "Auto Harass",  id = "AutoHarass"})
+        Menu.AutoHarass:MenuElement({name = "Auto Harass", id = "Use Q", value = true})
+        Menu.AutoHarass:MenuElement({type = MENU, name = "White List",  id = "WhiteList"})
+        for i, Enemy in pairs(GetEnemyHeroes()) do
+        Menu.AutoHarass.WhiteList:MenuElement({name = Enemy.charName,  id = Enemy.charName, value = true})
+        end
+        Menu.AutoHarass:MenuElement({name = "Mana Manager(%)", id = "Mana", value = 50, min = 1, max = 100, step = 1})
+
+        Menu:MenuElement({type = MENU, name = "Auto Level Up",  id = "lvlup"})
+        Menu.lvlup:MenuElement({name = "Use Auto Level Up", id = "Use", value = true})
+        Menu.lvlup:MenuElement({name = "Don't Use At 1 Lvl", id = "flvl", value = true})
+        Menu.lvlup:MenuElement({name = "Sequence Order", id = "Order", drop = {"Recomended for Ezreal", "Q > E > Q", "W > Q > R","Q > E > Q","E > R > E","E > W > W", "R > W > W"}})
+
+        Menu:MenuElement({type = MENU, name = "Activator",  id = "Items"})
+        Menu.Items:MenuElement({type = MENU, name = "Bilgewater Cutlass",  id = "BWC"})
+        Menu.Items.BWC:MenuElement({name = "Use In Combo",  id = "Use", value = true})
+        Menu.Items:MenuElement({type = MENU, name = "Blade of the Ruined King",  id = "BOTRK"})
+        Menu.Items.BOTRK:MenuElement({name = "Use In Combo",  id = "Use", value = true})
+        Menu.Items.BOTRK:MenuElement({name = "My HP(%)",  id = "MyHP", value = 100, min = 1, max = 100, step = 1})
+        Menu.Items.BOTRK:MenuElement({name = "Enemy HP(%)",  id = "EnemyHP", value = 50, min = 1, max = 100, step = 1})
 
 
+  
+        Menu:MenuElement({type = MENU, name = "Drawings",  id = "Draw"})
+        Menu.Draw:MenuElement({name = "Disable All Drawings", id = "Disable", value = false})
+        Menu.Draw:MenuElement({type = MENU, name = "[Q] Mystic Shot",  id = "Q"})
+        Menu.Draw.Q:MenuElement({name = "Draw Q Range",  id = "Range", value = true})
+        Menu.Draw.Q:MenuElement({name = "Q Color",  id = "Color", color = LocalDrawColor(255,255,255,255)})
+        Menu.Draw.Q:MenuElement({name = "Q Width",  id = "Width", value = 2, min = 1, max = 10, step = 1})
+        Menu.Draw.Q:MenuElement({name = "Draw Q Rectangle",  id = "Range2", value = true})
+        Menu.Draw.Q:MenuElement({name = "Q Rectangle Color",  id = "Color2", color = LocalDrawColor(255,255,255,255)})
+        Menu.Draw:MenuElement({type = MENU, name = "[W] Essence Flux",  id = "W"})
+        Menu.Draw.W:MenuElement({name = "Draw W Range",  id = "Range", value = true})
+        Menu.Draw.W:MenuElement({name = "W Color",  id = "Color", color = LocalDrawColor(255,255,255,255)})
+        Menu.Draw.W:MenuElement({name = "W Width",  id = "Width", value = 2, min = 1, max = 10, step = 1})
+        Menu.Draw:MenuElement({type = MENU, name = "[E] Arcane Shift",  id = "E"})
+        Menu.Draw.E:MenuElement({name = "Draw E Range",  id = "Range", value = true})
+        Menu.Draw.E:MenuElement({name = "E Color",  id = "Color", color = LocalDrawColor(255,255,255,255)})
+        Menu.Draw.E:MenuElement({name = "E Width",  id = "Width", value = 2, min = 1, max = 10, step = 1})
+        Menu.Draw:MenuElement({type = MENU, name = "[R] Trueshot Barage",  id = "R"})
+        Menu.Draw.R:MenuElement({name = "Draw R Range",  id = "Range", value = true})
+        Menu.Draw.R:MenuElement({name = "R Color",  id = "Color", color = LocalDrawColor(255,255,255,255)})
+        Menu.Draw.R:MenuElement({name = "R Width",  id = "Width", value = 2, min = 1, max = 10, step = 1})
+        Menu.Draw:MenuElement({name = "Draw Current Target", id = "CurTarget", value = true})
 
-function OnLoad()
-    Ezreal()
-end
+        Menu:MenuElement({name = " ", drop = {"Script Info"}})
+        Menu:MenuElement({name = "Script Version", drop = {"1.0"}})
+        Menu:MenuElement({name = "League Version", drop = {"7.8"}})
+        Menu:MenuElement({name = "Author", drop = {"Alcoholic's Ezreal (Reworked)"}})
+
+        Q    = { range = 1150                                                                                                }         
+        W    = { range = 1000, delay = 0.25, speed = 1600     , width = 80, collision = true , aoe = true , type = "linear" }         
+        E    = { range = 475                                                                                                }         
+        R    = { range = 3000, delay = 0.10, speed = 2000     , width = 160                                                 }       
+
+        Q.IsReady = function() return LocalGameCanUseSpell(_Q) == READY end         
+        W.IsReady = function() return LocalGameCanUseSpell(_W) == READY end         
+        E.IsReady = function() return LocalGameCanUseSpell(_E) == READY end         
+        R.IsReady = function() return LocalGameCanUseSpell(_R) == READY end  
+
+        Q.GetDamage = function(unit) return 45 + 35 * myHero:GetSpellData(_Q).level + myHero.bonusDamage * ((50 + 10 * myHero:GetSpellData(_Q).level)/100) end        
+
+        LocalCallbackAdd("Tick", function() Tick() end)         
+        LocalCallbackAdd("Draw", function() Drawings() end)
+        AfterAttackCallback(function() AfterAttack() end) 
+
+        print("Alcoholic's Ezreal (Reworked) Loaded | Current orbwalker: "..CurrentOrbName())         
+end 
+
+function OnLoad() Load() end
