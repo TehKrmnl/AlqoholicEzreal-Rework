@@ -1,19 +1,19 @@
-if myHero.charName ~= "Ezreal" then return end 	
+if myHero.charName ~= "Ezreal" then return end
 
 require "DamageLib"
-require "Collision"
+require "Collision
 
 local myHero = _G.myHero
 
-local LocalGetTickCount         = GetTickCount
-local LocalVector		= Vector
-local LocalCallbackAdd		= Callback.Add
-local LocalCallbackDel		= Callback.Del
-local LocalDrawLine		= Draw.Line
-local LocalDrawColor		= Draw.Color
-local LocalDrawCircle		= Draw.Circle
-local LocalCastSpell            = Control.CastSpell
-local LocalControlMove          = Control.Move
+local LocalGetTickCount  = GetTickCount
+local LocalVector	= Vector
+local LocalCallbackAdd	= Callback.Add
+local LocalCallbackDel	= Callback.Del
+local LocalDrawLine	= Draw.Line
+local LocalDrawColor	= Draw.Color
+local LocalDrawCircle	= Draw.Circle
+local LocalCastSpell    = Control.CastSpell
+local LocalControlMove  = Control.Move
 local LocalControlIsKeyDown	= Control.IsKeyDown
 local LocalControlKeyUp  	= Control.KeyUp
 local LocalControlKeyDown	= Control.KeyDown
@@ -34,26 +34,24 @@ local _W			= _W
 local _E			= _E
 local _R		        = _R
 local READY 		        = READY
-local LocalTableInsert          = table.insert
-local LocalTableSort            = table.sort
-local LocalTableRemove          = table.remove;
-local tonumber		        = tonumber
-local ipairs		        = ipairs
-local pairs		        = pairs
 
-local Menu, Q, Q2, W, E, R
+-- Spells
+Q = {Delay = 0.25, Radius = 60, Range = 1150, Speed = 2000, Collision = true}
+W = {Delay = 0.25, Radius = 80, Range = 1000, Speed = 1550, Collision = false}
+E = E = {Delay = 0.25, Radius = 475, Speed = math.max, width = 1}
+R = {Delay = 0.25, Radius = 160, Range = 3000, Speed = 2000, Collision = false}
 
 local Mode = function()
         if _G.SDK then
         	if _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] then
                         return "Combo"
-                elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_HARASS] then
+ elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_HARASS] then
                         return "Harass"
-                elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_LANECLEARS] then
+ elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_LANECLEARS] then
                         return "LaneClear"
-                elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_JUNGLECLEAR] then
+ elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_JUNGLECLEAR] then
                         return "LaneClear"
-                elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_LASTHIT] then
+ elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_LASTHIT] then
                         return "LastHit"
                 elseif _G.SDK.Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_FLEE] then
                         return "Flee"
@@ -66,6 +64,29 @@ local Mode = function()
         	end
         end
         return ""
+end
+
+local LastMove = 0
+local Move = function(pos)
+	if LastMove + 250 <= LocalGetTickCount() then
+		LocalControlMove(pos)
+	        LastMove = LocalGetTickCount()
+        end
+end
+
+local GetTarget = function(range)
+        local orb
+        if _G.SDK then
+        	orb = _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_PHYSICAL, myHero.pos)
+        elseif _G.Orbwalker then
+        	orb = GOS:GetTarget(range, "AD")
+        end
+        return orb
+end
+
+local ValidTarget =  function(unit, range)
+	local range = type(range) == "number" and range or math.huge
+	return unit and unit.team ~= myHero.team and unit.valid and unit.distance <= range and not unit.dead and unit.isTargetable and unit.visible
 end
 
 local LastMove = 0
@@ -153,102 +174,6 @@ local HealthPrediction = function(unit, time)
         return orb
 end
 
-local VectorPointProjectionOnLineSegment = function(v1, v2, v)
-	local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
-        local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) ^ 2 + (by - ay) ^ 2)
-        local pointLine = { x = ax + rL * (bx - ax), y = ay + rL * (by - ay) }
-        local rS = rL < 0 and 0 or (rL > 1 and 1 or rL)
-        local isOnSegment = rS == rL
-        local pointSegment = isOnSegment and pointLine or {x = ax + rS * (bx - ax), y = ay + rS * (by - ay)}
-	return pointSegment, pointLine, isOnSegment
-end
-
-local EnemyMinionsOnLine = function(sp, ep, width)
-        local c = 0
-        for i, minion in pairs(GetMinions()) do
-        	if minion and not minion.dead and minion.isEnemy then
-        		local pointSegment, pointLine, isOnSegment = VectorPointProjectionOnLineSegment(sp, ep, minion.pos)
-        		if isOnSegment and GetDistanceSqr(pointSegment, minion.pos) < (width + minion.boundingRadius)^2 and GetDistanceSqr(sp, ep) > GetDistanceSqr(sp, minion.pos) then
-				c = c + 1
-			end
-        	end
-        end
-        return c
-end
-
-local GetBestLinearFarmPos = function(range, width)
-	local pos, hit = nil, 0
-	for i, minion in pairs(GetMinions()) do
-		if minion and not minion.dead and minion.isEnemy then
-			local EP = myHero.pos:Extended(minion.pos, range)
-			local C = EnemyMinionsOnLine(myHero.pos, EP, width)
-			if C > hit then
-				hit = C
-				pos = minion.pos
-			end
-		end
-	end
-	return pos, hit
-end
-
-local CircleCircleIntersection = function(c1, c2, r1, r2) 
-        local D = GetDistance(c1, c2)
-        if D > r1 + r2 or D <= math.abs(r1 - r2) then return nil end 
-        local A = (r1 * r2 - r2 * r1 + D * D) / (2 * D) 
-        local H = math.sqrt(r1 * r1 - A * A)
-        local Direction = (c2 - c1):Normalized() 
-        local PA = c1 + A * Direction 
-        local S1 = PA + H * Direction:Perpendicular() 
-        local S2 = PA - H * Direction:Perpendicular() 
-        return S1, S2 
-end
-
-local ClosestToMouse = function(p1, p2) 
-        if GetDistance(mousePos, p1) > GetDistance(mousePos, p2) then return p2 else return p1 end
-end
-
-local DrawLine3D = function(x1, y1, z1, x2, y2, z2, width, color)
-	local xyz_1 = LocalVector(x1, y1, z1):To2D()
-	local xyz_2 = LocalVector(x2, y2, z2):To2D()
-	LocalDrawLine(xyz_2.x, xyz_2.y, xyz_1.x, xyz_1.y, width or 1, color or LocalDrawColor(255, 255, 255, 255))
-end
-
-local DrawRectangleOutline = function(startPos, endPos, width, color, ex)     
-        local c1 = startPos+Vector(Vector(endPos)-startPos):Perpendicular():Normalized()*width     
-        local c2 = startPos+Vector(Vector(endPos)-startPos):Perpendicular2():Normalized()*width     
-        local c3 = endPos+Vector(Vector(startPos)-endPos):Perpendicular():Normalized()*width     
-        local c4 = endPos+Vector(Vector(startPos)-endPos):Perpendicular2():Normalized()*width     
-        DrawLine3D(c1.x,c1.y,c1.z,c2.x,c2.y,c2.z,math.ceil(width/ex),color)     
-        DrawLine3D(c2.x,c2.y,c2.z,c3.x,c3.y,c3.z,math.ceil(width/ex),color)     
-        DrawLine3D(c3.x,c3.y,c3.z,c4.x,c4.y,c4.z,math.ceil(width/ex),color)     
-        DrawLine3D(c1.x,c1.y,c1.z,c4.x,c4.y,c4.z,math.ceil(width/ex),color) 
-end 
-
-local DrawTriangle = function(vector3, color, thickness, size, rot, speed, yShift, yLevel) 	
-        if not vector3 then vector3 = LocalVector(myHero.pos) end 	
-        if not color then color = LocalDrawColor(255, 255, 255, 255) end 	
-        if not thickness then thickness = 3 end 	
-        if not size then size = 75 end 	
-        if not speed then speed = 1 else speed = 1-speed end
-        vector3.y = vector3.y + yShift + (rot * yLevel) 
-        local a2v = function(a, m) m = m or 1 return math.cos(a) * m, math.sin(a) * m end
-        local RX1, RZ1 = a2v((rot*speed), size) 	
-        local RX2, RZ2 = a2v((rot*speed) + math.pi*0.33333, size) 	
-        local RX3, RZ3 = a2v((rot*speed) + math.pi*0.66666, size) 	
-        local PX1 = vector3.x + RX1 	
-        local PZ1 = vector3.z + RZ1 	
-        local PX2 = vector3.x + RX2 	
-        local PZ2 = vector3.z + RZ2 	
-        local PX3 = vector3.x + RX3 	
-        local PZ3 = vector3.z + RZ3 	
-        local PXT1 = vector3.x - (PX1 - vector3.x) 	
-        local PZT1 = vector3.z - (PZ1 - vector3.z) 	
-        local PXT3 = vector3.x - (PX3 - vector3.x) 	
-        local PZT3 = vector3.z - (PZ3 - vector3.z)  	
-        DrawLine3D(PXT1, vector3.y, PZT1, PXT3, vector3.y, PZT3, thickness, color) 	
-        DrawLine3D(PXT3, vector3.y, PZT3, PX2, vector3.y, PZ2, thickness, color) 	
-        DrawLine3D(PX2, vector3.y, PZ2, PXT1, vector3.y, PZT1, thickness, color) 
-end
 
 local Mode = function()
 require("MapPositionGOS")
