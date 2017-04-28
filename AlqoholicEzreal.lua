@@ -66,7 +66,7 @@ if GOS:GetMode() == "LastHit" then
     end
 end
 
-function Ezreal:Combo()
+function '('Ezreal:Combo()
 if local qtarget = self:GetTarget(Q.range)
 
 if qtarget and self.Menu.Combo.ComboQ:Value() and self:CanCast(_Q)then
