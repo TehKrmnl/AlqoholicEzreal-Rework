@@ -1,7 +1,7 @@
 if myHero.charName ~= "Ezreal" then return end
 
 require "DamageLib"
-require "Collision
+require "Collision"
 
 local myHero = _G.myHero
 
