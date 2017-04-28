@@ -1,8 +1,6 @@
 if myHero.charName ~= "Ezreal" then return end
 
 require "DamageLib"
-require "Collision"
-
 local myHero = _G.myHero
 
 local LocalGetTickCount  = GetTickCount
