@@ -276,6 +276,4 @@ end
 
 
 
-function OnLoad()
-    Ezreal()
-end
+function OnLoad() Load() end
