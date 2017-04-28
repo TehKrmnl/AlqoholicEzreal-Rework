@@ -20,7 +20,7 @@ R = {Delay = 1, Radius = 160, Range = 3000, Speed = 2000, Collision = false}
 end
 
 function Ezreal:LoadMenu()
-    self.Menu = MenuElement({type = MENU, id = "Ezreal", name = "Ezreal - The Prodigal Explorer", leftIcon="http://pt.seaicons.com/wp-content/uploads/2015/07/Ezreal-Pulsefire-icon.png"})
+    self.Menu = MenuElement({type = MENU, id = "Ezreal", name = "Ezreal - Reworked By Poseidon", leftIcon="https://cdn.discordapp.com/emojis/249237025754972171.png"})
 
     --[[Combo]]
     self.Menu:MenuElement({type = MENU, id = "Combo", name = "Combo Settings"})
