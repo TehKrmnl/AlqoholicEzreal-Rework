@@ -20,7 +20,7 @@ R = {Delay = 1, Radius = 160, Range = 3000, Speed = 2000, Collision = false}
 end
 
 function Ezreal:LoadMenu()
-    self.Menu = MenuElement({type = MENU, id = "Ezreal", name = "Ezreal - Reworked By Poseidon", leftIcon="https://cdn.discordapp.com/emojis/249237025754972171.png"})
+    self.Menu = MenuElement({type = MENU, id = "Ezreal", name = "The Prodigal EXplorer - Reworked By Poseidon", leftIcon="https://cdn.discordapp.com/emojis/249237025754972171.png"})
 
     --[[Combo]]
     self.Menu:MenuElement({type = MENU, id = "Combo", name = "Combo Settings"})
@@ -285,7 +285,7 @@ LocalCallbackAdd("Tick", function() Tick() end)
 localCallbackAdd("Draw", function() Drawings() end)
         AfterAttackCallback(function() AfterAttack() end) 
 
-        print("Alcoholic's Ezreal (Reworked) Loaded | Current orbwalker: "..CurrentOrbName())      
+        print("Ezreal The Prodigal EXplorer (Reworked) Loaded | Current orbwalker: "..CurrentOrbName())      
 
 
 function OnLoad()
