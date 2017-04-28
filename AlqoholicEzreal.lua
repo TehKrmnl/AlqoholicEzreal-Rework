@@ -250,15 +250,6 @@ local DrawTriangle = function(vector3, color, thickness, size, rot, speed, yShif
         DrawLine3D(PX2, vector3.y, PZ2, PXT1, vector3.y, PZT1, thickness, color) 
 end
 
-local GetItemSlot = function(unit, id)
-        for i = ITEM_1, ITEM_7 do
-		if unit:GetItemData(i).itemID == id and unit:GetSpellData(i).currentCd == 0 then 
-			return i
-		end
-	end
-	return nil
-
-
 local Mode = function()
 require("MapPositionGOS")
 
